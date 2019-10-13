@@ -71,5 +71,5 @@ function updateCanvas() {
     ctx.fillStyle = "gray";
     ctx.font = "20px sans-serif";
     ctx.textBaseline = "top";
-    ctx.fillText("DDON R.I.P @nururefu", 10 * dpr, (1080 - 30) * dpr);
+    ctx.fillText("DDON R.I.P. @nururefu", 10 * dpr, (1080 - 30) * dpr);
 }
