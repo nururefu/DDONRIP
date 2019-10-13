@@ -26,6 +26,13 @@ var textInput = document.getElementById("text-input");
 textInput.oninput = function () {
     updateCanvas();
 };
+var downloadButton = document.getElementById("download-button");
+downloadButton.onclick = function () {
+    var link = document.createElement("a");
+    link.href = canvas.toDataURL("image/jpeg", 0.90);
+    link.download = "DDONRIP.jpg";
+    link.click();
+};
 var img = document.createElement("img");
 img.src = "image.jpg";
 img.onload = function () {
@@ -48,7 +55,7 @@ function updateCanvas() {
             offsetX = 0;
             offsetY += 50;
         }
-        console.log(text, startX + offsetX, startY + offsetY);
+        //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY);
         offsetX += metrics.width;
     }

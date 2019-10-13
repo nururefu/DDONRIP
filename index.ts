@@ -29,6 +29,14 @@ textInput.oninput = () => {
     updateCanvas()
 }
 
+const downloadButton = document.getElementById("download-button") as HTMLButtonElement
+downloadButton.onclick = () => {
+    const link = document.createElement("a")
+    link.href = canvas.toDataURL("image/jpeg", 0.90)
+    link.download = "DDONRIP.jpg"
+    link.click()
+}
+
 const img = document.createElement("img")
 img.src = "image.jpg"
 img.onload = () => {
@@ -55,7 +63,7 @@ function updateCanvas() {
             offsetX = 0
             offsetY += 50
         }
-        console.log(text, startX + offsetX, startY + offsetY)
+        //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY)
         offsetX += metrics.width
     }
