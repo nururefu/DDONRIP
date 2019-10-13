@@ -14,9 +14,9 @@ function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height)
     carvedTextCanvasContext.globalCompositeOperation = 'source-over'
     carvedTextCanvasContext.shadowColor = "black"
-    carvedTextCanvasContext.shadowBlur = 2
-    carvedTextCanvasContext.shadowOffsetX = 100+1
-    carvedTextCanvasContext.shadowOffsetY = 1
+    carvedTextCanvasContext.shadowBlur = 2 * dpr
+    carvedTextCanvasContext.shadowOffsetX = 100 + (1 * dpr)
+    carvedTextCanvasContext.shadowOffsetY = 1 * dpr
     carvedTextCanvasContext.strokeText(text, -100, 0)
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in'
     carvedTextCanvasContext.shadowColor = "transparent"
