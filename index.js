@@ -30,7 +30,7 @@ canvas.width = 1920 * dpr;
 canvas.height = 1080 * dpr;
 var textInput = document.getElementById("text-input");
 textInput.oninput = function () {
-    updateCanvas();
+    requestUpdate();
 };
 var downloadButton = document.getElementById("download-button");
 downloadButton.onclick = function () {
@@ -44,8 +44,29 @@ downloadButton.onclick = function () {
 var img = document.createElement("img");
 img.src = "image.jpg";
 img.onload = function () {
-    updateCanvas();
+    requestUpdate();
 };
+var requested = false;
+var requesting = false;
+function requestUpdate() {
+    requested = true;
+    onUpdate();
+}
+function onUpdate() {
+    if (requesting)
+        return;
+    if (requested) {
+        requested = false;
+        requesting = true;
+        setTimeout(function () {
+            requesting = false;
+            onUpdate();
+        }, 500);
+    }
+    else {
+        updateCanvas();
+    }
+}
 function updateCanvas() {
     ctx.filter = "none";
     ctx.drawImage(img, 0, 0, 1920 * dpr, 1080 * dpr);

@@ -33,7 +33,7 @@ canvas.height = 1080 * dpr
 
 const textInput = document.getElementById("text-input") as HTMLInputElement
 textInput.oninput = () => {
-    updateCanvas()
+    requestUpdate()
 }
 
 const downloadButton = document.getElementById("download-button") as HTMLButtonElement
@@ -49,7 +49,29 @@ downloadButton.onclick = () => {
 const img = document.createElement("img")
 img.src = "image.jpg"
 img.onload = () => {
-    updateCanvas()
+    requestUpdate()
+}
+
+let requested = false
+let requesting = false
+function requestUpdate() {
+    requested = true
+    onUpdate()
+}
+
+function onUpdate() {
+    if (requesting) return
+
+    if (requested) {
+        requested = false
+        requesting = true
+        setTimeout(() => {
+            requesting = false
+            onUpdate()
+        }, 500)
+    } else {
+        updateCanvas()
+    }
 }
 
 function updateCanvas() {
