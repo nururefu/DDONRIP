@@ -47,13 +47,14 @@ img.onload = function () {
     updateCanvas();
 };
 function updateCanvas() {
+    ctx.filter = "none";
     ctx.drawImage(img, 0, 0, 1920 * dpr, 1080 * dpr);
     var startX = 1259 * dpr;
     var startY = 580 * dpr;
     var maxWidth = 242 * dpr;
     //ctx.strokeStyle = "red"
     //ctx.strokeRect(1259, 602, 242, 223)
-    //ctx.filter = "blur(1px)"
+    ctx.filter = "blur(1px)";
     var str = textInput.value;
     var offsetX = 0;
     var offsetY = 0;

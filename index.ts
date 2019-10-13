@@ -53,6 +53,7 @@ img.onload = () => {
 }
 
 function updateCanvas() {
+    ctx.filter = "none"
     ctx.drawImage(img, 0, 0, 1920 * dpr, 1080 * dpr)
 
     const startX = 1259 * dpr
@@ -62,7 +63,7 @@ function updateCanvas() {
     //ctx.strokeStyle = "red"
     //ctx.strokeRect(1259, 602, 242, 223)
 
-    //ctx.filter = "blur(1px)"
+    ctx.filter = "blur(1px)"
 
     const str = textInput.value
     let offsetX = 0
