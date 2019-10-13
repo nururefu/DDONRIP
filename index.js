@@ -1,13 +1,13 @@
 "use strict";
 var dpr = window.devicePixelRatio || 1;
-var fontHeight = 50;
+var fontHeight = 50 * dpr;
 var carvedTextCanvas = document.createElement("canvas");
 carvedTextCanvas.width = 200;
 carvedTextCanvas.height = 200;
 var carvedTextCanvasContext = carvedTextCanvas.getContext("2d");
 carvedTextCanvasContext.fillStyle = "black";
 carvedTextCanvasContext.globalAlpha = 1;
-carvedTextCanvasContext.font = (fontHeight * dpr) + "px lestania";
+carvedTextCanvasContext.font = fontHeight + "px lestania";
 carvedTextCanvasContext.textBaseline = "top";
 function drawCarvedText(ctx, text, x, y) {
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height);
@@ -47,9 +47,9 @@ img.onload = function () {
 };
 function updateCanvas() {
     ctx.drawImage(img, 0, 0, 1920 * dpr, 1080 * dpr);
-    var startX = 1259;
-    var startY = 580;
-    var maxWidth = 242;
+    var startX = 1259 * dpr;
+    var startY = 580 * dpr;
+    var maxWidth = 242 * dpr;
     //ctx.strokeStyle = "red"
     //ctx.strokeRect(1259, 602, 242, 223)
     //ctx.filter = "blur(1px)"
@@ -64,7 +64,7 @@ function updateCanvas() {
             offsetY += fontHeight;
         }
         //console.log(text, startX + offsetX, startY + offsetY)
-        drawCarvedText(ctx, text, (startX + offsetX) * dpr, (startY + offsetY) * dpr);
+        drawCarvedText(ctx, text, startX + offsetX, startY + offsetY);
         offsetX += metrics.width;
     }
 }
