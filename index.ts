@@ -1,5 +1,5 @@
 const dpr = window.devicePixelRatio || 1
-const fontHeight = 50 * dpr
+const fontHeight = 50
 
 const carvedTextCanvas = document.createElement("canvas")
 carvedTextCanvas.width = 200
@@ -14,9 +14,9 @@ function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height)
     carvedTextCanvasContext.globalCompositeOperation = 'source-over'
     carvedTextCanvasContext.shadowColor = "black"
-    carvedTextCanvasContext.shadowBlur = 2 * dpr
-    carvedTextCanvasContext.shadowOffsetX = 100 + (1 * dpr)
-    carvedTextCanvasContext.shadowOffsetY = 1 * dpr
+    carvedTextCanvasContext.shadowBlur = 2
+    carvedTextCanvasContext.shadowOffsetX = 100 + 1
+    carvedTextCanvasContext.shadowOffsetY = 1
     carvedTextCanvasContext.strokeText(text, -100, 0)
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in'
     carvedTextCanvasContext.shadowColor = "transparent"
@@ -71,7 +71,7 @@ function updateCanvas() {
         const metrics = carvedTextCanvasContext.measureText(text)
         if (offsetX + metrics.width > maxWidth) {
             offsetX = 0
-            offsetY += fontHeight
+            offsetY += fontHeight * dpr
         }
         //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY)
