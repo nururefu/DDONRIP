@@ -1,4 +1,5 @@
 const dpr = window.devicePixelRatio || 1
+const fontHeight = 50
 
 const carvedTextCanvas = document.createElement("canvas")
 carvedTextCanvas.width = 200
@@ -6,7 +7,7 @@ carvedTextCanvas.height = 200
 const carvedTextCanvasContext = carvedTextCanvas.getContext("2d")!
 carvedTextCanvasContext.fillStyle = "black"
 carvedTextCanvasContext.globalAlpha = 1
-carvedTextCanvasContext.font = "50px lestania"
+carvedTextCanvasContext.font = (fontHeight * dpr) + "px lestania"
 carvedTextCanvasContext.textBaseline = "top"
 
 function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
@@ -70,7 +71,7 @@ function updateCanvas() {
         const metrics = carvedTextCanvasContext.measureText(text)
         if (offsetX + metrics.width > maxWidth) {
             offsetX = 0
-            offsetY += 50
+            offsetY += fontHeight
         }
         //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, (startX + offsetX) * dpr, (startY + offsetY) * dpr)

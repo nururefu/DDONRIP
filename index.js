@@ -1,12 +1,13 @@
 "use strict";
 var dpr = window.devicePixelRatio || 1;
+var fontHeight = 50;
 var carvedTextCanvas = document.createElement("canvas");
 carvedTextCanvas.width = 200;
 carvedTextCanvas.height = 200;
 var carvedTextCanvasContext = carvedTextCanvas.getContext("2d");
 carvedTextCanvasContext.fillStyle = "black";
 carvedTextCanvasContext.globalAlpha = 1;
-carvedTextCanvasContext.font = "50px lestania";
+carvedTextCanvasContext.font = (fontHeight * dpr) + "px lestania";
 carvedTextCanvasContext.textBaseline = "top";
 function drawCarvedText(ctx, text, x, y) {
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height);
@@ -60,7 +61,7 @@ function updateCanvas() {
         var metrics = carvedTextCanvasContext.measureText(text);
         if (offsetX + metrics.width > maxWidth) {
             offsetX = 0;
-            offsetY += 50;
+            offsetY += fontHeight;
         }
         //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, (startX + offsetX) * dpr, (startY + offsetY) * dpr);
