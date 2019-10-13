@@ -20,8 +20,9 @@ function drawCarvedText(ctx, text, x, y) {
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in';
     carvedTextCanvasContext.shadowColor = "transparent";
     carvedTextCanvasContext.fillText(text, 0, 0);
-    ctx.drawImage(carvedTextCanvas, x, y);
-    ctx.drawImage(carvedTextCanvas, x, y);
+    var width = carvedTextCanvasContext.measureText(text).width;
+    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr);
+    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr);
 }
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
@@ -58,13 +59,13 @@ function updateCanvas() {
     var offsetY = 0;
     for (var i = 0; i < str.length; i++) {
         var text = str.substr(i, 1);
-        var metrics = carvedTextCanvasContext.measureText(text);
-        if (offsetX + metrics.width > maxWidth) {
+        var width = carvedTextCanvasContext.measureText(text).width * dpr;
+        if (offsetX + width > maxWidth) {
             offsetX = 0;
             offsetY += fontHeight * dpr;
         }
         //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY);
-        offsetX += metrics.width;
+        offsetX += width;
     }
 }

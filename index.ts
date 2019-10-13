@@ -21,8 +21,9 @@ function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in'
     carvedTextCanvasContext.shadowColor = "transparent"
     carvedTextCanvasContext.fillText(text, 0, 0)
-    ctx.drawImage(carvedTextCanvas, x, y)
-    ctx.drawImage(carvedTextCanvas, x, y)
+    const width = carvedTextCanvasContext.measureText(text).width
+    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr)
+    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr)
 }
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -68,13 +69,13 @@ function updateCanvas() {
     let offsetY = 0
     for (let i = 0; i < str.length; i++) {
         const text = str.substr(i, 1)
-        const metrics = carvedTextCanvasContext.measureText(text)
-        if (offsetX + metrics.width > maxWidth) {
+        const width = carvedTextCanvasContext.measureText(text).width * dpr
+        if (offsetX + width > maxWidth) {
             offsetX = 0
             offsetY += fontHeight * dpr
         }
         //console.log(text, startX + offsetX, startY + offsetY)
         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY)
-        offsetX += metrics.width
+        offsetX += width
     }
 }
