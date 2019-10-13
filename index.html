@@ -3,6 +3,7 @@
     <title>DDON R.I.P.</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="spectre.min.css">
     <style>
         @font-face {
             font-family: 'lestania';
@@ -15,9 +16,9 @@
 </head>
 
 <body>
-    <div>DDON RIP <span class="lestania">ddon rip</span></div>
-    <div><input id="text-input" type="text" style="width: 100%"></div>
-    <div><button id="download-button">download</button></div>
+    <span class="h1">DDON R.I.P.</span><span class="h3 lestania"> ddon tombstone generator</span>
+    <div><input id="text-input" type="text" pattern="[ \!a-z]+" style="width: 100%" placeholder="墓標に刻みたい文字をここに小文字で入力してね"></div>
+    <div><button id="download-button" class="btn">画像を保存</button></div>
     <canvas id="canvas" width="1920" height="1080" style="width: 100%" />
 
     <script src="index.js"></script>
