@@ -76,7 +76,7 @@ function updateCanvas() {
     //ctx.strokeStyle = "red"
     //ctx.strokeRect(1259, 602, 242, 223)
     ctx.filter = "blur(1px)";
-    var str = textInput.value;
+    var str = textInput.value.toLowerCase();
     var offsetX = 0;
     var offsetY = 0;
     for (var i = 0; i < str.length; i++) {

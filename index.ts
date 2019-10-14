@@ -87,7 +87,7 @@ function updateCanvas() {
 
     ctx.filter = "blur(1px)"
 
-    const str = textInput.value
+    const str = textInput.value.toLowerCase()
     let offsetX = 0
     let offsetY = 0
     for (let i = 0; i < str.length; i++) {
