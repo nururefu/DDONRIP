@@ -102,6 +102,7 @@ function updateCanvas() {
         offsetX += width
     }
 
+    ctx.filter = "none"
     ctx.fillStyle = "gray"
     ctx.font = "20px sans-serif"
     ctx.textBaseline = "top"

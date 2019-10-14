@@ -1,0 +1,63 @@
+$base03:    #002b36;
+$base02:    #073642;
+$base01:    #586e75;
+$base00:    #657b83;
+$base0:     #839496;
+$base1:     #93a1a1;
+$base2:     #eee8d5;
+$base3:     #fdf6e3;
+$yellow:    #b58900;
+$orange:    #cb4b16;
+$red:       #dc322f;
+$magenta:   #d33682;
+$violet:    #6c71c4;
+$blue:      #268bd2;
+$cyan:      #2aa198;
+$green:     #859900;
+
+// Core colors
+$primary-color: $violet;
+$primary-color-dark: darken($primary-color, 3%);
+$primary-color-light: lighten($primary-color, 3%);
+$secondary-color: lighten($primary-color, 37.5%);
+$secondary-color-dark: darken($secondary-color, 3%);
+$secondary-color-light: lighten($secondary-color, 3%);
+
+// Gray colors
+$dark-color: $base03;
+$light-color: $base3;
+$gray-color: lighten($dark-color, 55%);
+$gray-color-dark: darken($gray-color, 30%);
+$gray-color-light: lighten($gray-color, 20%);
+
+$border-color: lighten($dark-color, 65%);
+$border-color-dark: darken($border-color, 10%);
+$border-color-light: lighten($border-color, 8%);
+$bg-color: lighten($dark-color, 75%);
+$bg-color-dark: darken($bg-color, 3%);
+$bg-color-light: $dark-color;
+
+// Control colors
+$success-color: $green;
+$warning-color: $yellow;
+$error-color: $red;
+
+// Other colors
+$code-color: #d73e48;
+$highlight-color: #ffe9b3;
+$body-bg: $dark-color;
+$body-font-color: $light-color;
+$link-color: $primary-color;
+$link-color-dark: darken($link-color, 10%);
+$link-color-light: lighten($link-color, 10%);
+
+@import "./node_modules/spectre.css/src/spectre.scss";
+
+@font-face {
+    font-family: 'lestania';
+    src: url('lestania.ttf') format('truetype');
+}
+
+.lestania {
+    font-family: lestania;
+}
