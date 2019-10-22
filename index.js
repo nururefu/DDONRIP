@@ -305,22 +305,33 @@ function createVbo(data) {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     return vbo;
 }
-var vertexShaderSource = "\nattribute vec3 position;\nuniform   mat4 mvpMatrix;\n\nvoid main(void){\n    gl_Position = mvpMatrix * vec4(position, 1.0);\n}\n";
-var fragmentShaderSource = "\nvoid main(void){\n    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n}\n";
+var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\n\nvoid main(void){\n    vColor = color;\n    gl_Position = mvpMatrix * vec4(position, 1.0);\n}\n";
+var fragmentShaderSource = "\nprecision mediump float;\n\nvarying vec4 vColor;\n\nvoid main(void){\n    gl_FragColor = vColor;\n}\n";
 var vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER);
 var fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
 var program = createProgram(vertexShader, fragmentShader);
-var attribLocation = gl.getAttribLocation(program, 'position');
-var attribStride = 3;
+var positionAttribLocation = gl.getAttribLocation(program, 'position');
+var colorAttribLocation = gl.getAttribLocation(program, 'color');
 var vertexPosition = [
     0.0, 1.0, 0.0,
     1.0, 0.0, 0.0,
     -1.0, 0.0, 0.0
 ];
-var vbo = createVbo(vertexPosition);
-gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-gl.enableVertexAttribArray(attribLocation);
-gl.vertexAttribPointer(attribLocation, attribStride, gl.FLOAT, false, 0, 0);
+var vertexColor = [
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0
+];
+var vertexVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(positionAttribLocation);
+gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+var colorVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(colorAttribLocation);
+gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0);
 var m = new matIV();
 var mMatrix = m.identity(m.create());
 var vMatrix = m.identity(m.create());

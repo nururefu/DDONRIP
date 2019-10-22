@@ -281,33 +281,52 @@ function createVbo(data: Array<number>) {
 
 const vertexShaderSource = `
 attribute vec3 position;
+attribute vec4 color;
 uniform   mat4 mvpMatrix;
+varying   vec4 vColor;
 
 void main(void){
+    vColor = color;
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }
 `
 const fragmentShaderSource = `
+precision mediump float;
+
+varying vec4 vColor;
+
 void main(void){
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    gl_FragColor = vColor;
 }
 `
 
 const vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER)
 const fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
 const program = createProgram(vertexShader, fragmentShader)
-const attribLocation = gl.getAttribLocation(program, 'position')
-const attribStride = 3
+const positionAttribLocation = gl.getAttribLocation(program, 'position')
+const colorAttribLocation = gl.getAttribLocation(program, 'color')
 const vertexPosition = [
     0.0, 1.0, 0.0,
     1.0, 0.0, 0.0,
     -1.0, 0.0, 0.0
 ]
+var vertexColor = [
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0
+]
 
-const vbo = createVbo(vertexPosition)
-gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
-gl.enableVertexAttribArray(attribLocation)
-gl.vertexAttribPointer(attribLocation, attribStride, gl.FLOAT, false, 0, 0)
+const vertexVbo = gl.createBuffer()!
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo)
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW)
+gl.enableVertexAttribArray(positionAttribLocation)
+gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0)
+
+const colorVbo = gl.createBuffer()!
+gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo)
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW)
+gl.enableVertexAttribArray(colorAttribLocation)
+gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0)
 
 const m = new matIV()
 const mMatrix = m.identity(m.create())
