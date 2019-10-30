@@ -141,6 +141,28 @@ var matIV = /** @class */ (function () {
             dest[15] = 0;
             return dest;
         };
+        this.ortho = function (left, right, bottom, top, near, far, dest) {
+            var lr = 1 / (left - right);
+            var bt = 1 / (bottom - top);
+            var nf = 1 / (near - far);
+            dest[0] = -2 * lr;
+            dest[1] = 0;
+            dest[2] = 0;
+            dest[3] = 0;
+            dest[4] = 0;
+            dest[5] = -2 * bt;
+            dest[6] = 0;
+            dest[7] = 0;
+            dest[8] = 0;
+            dest[9] = 0;
+            dest[10] = 2 * nf;
+            dest[11] = 0;
+            dest[12] = (left + right) * lr;
+            dest[13] = (top + bottom) * bt;
+            dest[14] = (far + near) * nf;
+            dest[15] = 1;
+            return dest;
+        };
         this.transpose = function (mat, dest) {
             dest[0] = mat[0];
             dest[1] = mat[4];
@@ -274,10 +296,14 @@ var canvas = document.getElementById("canvas");
 //const ctx = canvas.getContext("2d")!
 canvas.width = 1920 * dpr;
 canvas.height = 1080 * dpr;
-var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+var glOptions = { preserveDrawingBuffer: true };
+var gl = canvas.getContext('webgl', glOptions) || canvas.getContext('experimental-webgl', glOptions);
 gl.clearColor(0, 0, 0, 1);
 gl.clearDepth(1);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LEQUAL);
+gl.activeTexture(gl.TEXTURE0);
 function createShader(source, type) {
     var shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -305,59 +331,100 @@ function createVbo(data) {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     return vbo;
 }
-var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\n\nvoid main(void){\n    vColor = color;\n    gl_Position = mvpMatrix * vec4(position, 1.0);\n}\n";
-var fragmentShaderSource = "\nprecision mediump float;\n\nvarying vec4 vColor;\n\nvoid main(void){\n    gl_FragColor = vColor;\n}\n";
+var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nattribute vec2 textureCoord;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\nvarying   vec2 vTextureCoord;\n\nvoid main(void){\n    vColor        = color;\n    vTextureCoord = textureCoord;\n    gl_Position   = mvpMatrix * vec4(position, 1.0);\n}\n";
+var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n    vec4 smpColor = texture2D(texture, vTextureCoord);\n    gl_FragColor  = vColor * smpColor;\n}\n";
 var vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER);
 var fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
 var program = createProgram(vertexShader, fragmentShader);
 var positionAttribLocation = gl.getAttribLocation(program, 'position');
 var colorAttribLocation = gl.getAttribLocation(program, 'color');
+var textureCoordAttributeLocation = gl.getAttribLocation(program, 'textureCoord');
 var vertexPosition = [
-    0.0, 1.0, 0.0,
-    1.0, 0.0, 0.0,
-    -1.0, 0.0, 0.0
-];
-var vertexColor = [
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0
+    0, 0, 0,
+    1920, 0, 0,
+    0, 1080, 0,
+    1920, 1080, 0,
 ];
 var vertexVbo = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+var vertexColor = [
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+];
 var colorVbo = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW);
 gl.enableVertexAttribArray(colorAttribLocation);
 gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0);
+var textureCoord = [
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    1.0, 1.0,
+];
+var textureCoordVbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordVbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoord), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(textureCoordAttributeLocation);
+gl.vertexAttribPointer(textureCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+var index = [
+    0, 1, 2,
+    3, 2, 1
+];
+var indexIbo = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexIbo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(index), gl.STATIC_DRAW);
 var m = new matIV();
 var mMatrix = m.identity(m.create());
 var vMatrix = m.identity(m.create());
 var pMatrix = m.identity(m.create());
 var mvpMatrix = m.identity(m.create());
-m.lookAt([0, 1, 3], [0, 0, 0], [0, 1, 0], vMatrix);
-m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix);
+m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix);
+//m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
+m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix);
 m.multiply(pMatrix, vMatrix, mvpMatrix);
 m.multiply(mvpMatrix, mMatrix, mvpMatrix);
-var uniformLocation = gl.getUniformLocation(program, 'mvpMatrix');
-gl.uniformMatrix4fv(uniformLocation, false, mvpMatrix);
-gl.drawArrays(gl.TRIANGLES, 0, 3);
-gl.flush();
+var mvpMatrixUniformLocation = gl.getUniformLocation(program, 'mvpMatrix');
+var textureUniformLocation = gl.getUniformLocation(program, 'texture');
+console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS));
+var img = new Image();
+img.onload = function () {
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // gl.LINEAR の代わりに gl.NEAREST も可能。ミップマップは不可
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    // S 座標のラッピング (繰り返し) を禁止
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    // T 座標のラッピング (繰り返し) を禁止
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    //gl.generateMipmap(gl.TEXTURE_2D)
+    gl.uniform1i(textureUniformLocation, 0);
+    gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix);
+    //gl.drawArrays(gl.TRIANGLES, 0, 3)
+    gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+    gl.flush();
+    console.log('flush');
+};
+img.src = 'image.jpg';
 // const textInput = document.getElementById("text-input") as HTMLInputElement
 // textInput.oninput = () => {
 //     requestUpdate()
 // }
-// const downloadButton = document.getElementById("download-button") as HTMLButtonElement
-// downloadButton.onclick = () => {
-//     const link = document.createElement("a")
-//     link.href = canvas.toDataURL("image/jpeg", 0.90)
-//     link.download = "DDONRIP.jpg"
-//     document.body.appendChild(link)
-//     link.click()
-//     document.body.removeChild(link)
-// }
+var downloadButton = document.getElementById("download-button");
+downloadButton.onclick = function () {
+    var link = document.createElement("a");
+    link.href = canvas.toDataURL("image/jpeg", 0.90);
+    link.download = "DDONRIP.jpg";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
 // const img = document.createElement("img")
 // img.src = "image.jpg"
 // img.onload = () => {

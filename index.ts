@@ -163,7 +163,29 @@ class matIV {
 		dest[14] = -(far * near * 2) / c;
 		dest[15] = 0;
 		return dest;
-	};
+    };
+    ortho = function (left: number, right: number, bottom: number, top: number, near: number, far: number, dest: Float32Array) {
+        let lr = 1 / (left - right);
+        let bt = 1 / (bottom - top);
+        let nf = 1 / (near - far);
+        dest[0] = -2 * lr;
+        dest[1] = 0;
+        dest[2] = 0;
+        dest[3] = 0;
+        dest[4] = 0;
+        dest[5] = -2 * bt;
+        dest[6] = 0;
+        dest[7] = 0;
+        dest[8] = 0;
+        dest[9] = 0;
+        dest[10] = 2 * nf;
+        dest[11] = 0;
+        dest[12] = (left + right) * lr;
+        dest[13] = (top + bottom) * bt;
+        dest[14] = (far + near) * nf;
+        dest[15] = 1;
+        return dest;
+    };
 	transpose = function(mat: Float32Array, dest: Float32Array){
 		dest[0]  = mat[0];  dest[1]  = mat[4];
 		dest[2]  = mat[8];  dest[3]  = mat[12];
@@ -240,10 +262,15 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement
 canvas.width = 1920 * dpr
 canvas.height = 1080 * dpr
 
-const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext
+const glOptions: WebGLContextAttributes = { preserveDrawingBuffer: true }
+const gl = canvas.getContext('webgl', glOptions) || canvas.getContext('experimental-webgl', glOptions) as WebGLRenderingContext
 gl.clearColor(0, 0, 0, 1)
 gl.clearDepth(1)
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+gl.enable(gl.DEPTH_TEST)
+gl.depthFunc(gl.LEQUAL)
+gl.activeTexture(gl.TEXTURE0)
 
 function createShader(source: string, type: number) {
     const shader = gl.createShader(type)!
@@ -282,21 +309,27 @@ function createVbo(data: Array<number>) {
 const vertexShaderSource = `
 attribute vec3 position;
 attribute vec4 color;
+attribute vec2 textureCoord;
 uniform   mat4 mvpMatrix;
 varying   vec4 vColor;
+varying   vec2 vTextureCoord;
 
 void main(void){
-    vColor = color;
-    gl_Position = mvpMatrix * vec4(position, 1.0);
+    vColor        = color;
+    vTextureCoord = textureCoord;
+    gl_Position   = mvpMatrix * vec4(position, 1.0);
 }
 `
 const fragmentShaderSource = `
 precision mediump float;
 
-varying vec4 vColor;
+uniform sampler2D texture;
+varying vec4      vColor;
+varying vec2      vTextureCoord;
 
 void main(void){
-    gl_FragColor = vColor;
+    vec4 smpColor = texture2D(texture, vTextureCoord);
+    gl_FragColor  = vColor * smpColor;
 }
 `
 
@@ -305,28 +338,51 @@ const fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
 const program = createProgram(vertexShader, fragmentShader)
 const positionAttribLocation = gl.getAttribLocation(program, 'position')
 const colorAttribLocation = gl.getAttribLocation(program, 'color')
-const vertexPosition = [
-    0.0, 1.0, 0.0,
-    1.0, 0.0, 0.0,
-    -1.0, 0.0, 0.0
-]
-var vertexColor = [
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0
-]
+const textureCoordAttributeLocation = gl.getAttribLocation(program, 'textureCoord')
 
+const vertexPosition = [
+    0, 0, 0,
+    1920, 0, 0,
+    0, 1080, 0,
+    1920, 1080, 0,
+]
 const vertexVbo = gl.createBuffer()!
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo)
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW)
 gl.enableVertexAttribArray(positionAttribLocation)
 gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0)
 
+const vertexColor = [
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+]
 const colorVbo = gl.createBuffer()!
 gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo)
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW)
 gl.enableVertexAttribArray(colorAttribLocation)
 gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0)
+
+const textureCoord = [
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    1.0, 1.0,
+]
+const textureCoordVbo = gl.createBuffer()!
+gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordVbo)
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoord), gl.STATIC_DRAW)
+gl.enableVertexAttribArray(textureCoordAttributeLocation)
+gl.vertexAttribPointer(textureCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0)
+
+const index = [
+    0, 1, 2,
+    3, 2, 1
+]
+const indexIbo = gl.createBuffer()!
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexIbo)
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(index), gl.STATIC_DRAW)
 
 const m = new matIV()
 const mMatrix = m.identity(m.create())
@@ -334,16 +390,40 @@ const vMatrix = m.identity(m.create())
 const pMatrix = m.identity(m.create())
 const mvpMatrix = m.identity(m.create())
 
-m.lookAt([0,1,3], [0,0,0], [0,1,0], vMatrix)
-m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
+m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix)
+//m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
+m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix)
 m.multiply(pMatrix, vMatrix, mvpMatrix)
 m.multiply(mvpMatrix, mMatrix, mvpMatrix)
 
-const uniformLocation = gl.getUniformLocation(program, 'mvpMatrix')
-gl.uniformMatrix4fv(uniformLocation, false, mvpMatrix)
-gl.drawArrays(gl.TRIANGLES, 0, 3)
-gl.flush()
+const mvpMatrixUniformLocation = gl.getUniformLocation(program, 'mvpMatrix')
+const textureUniformLocation = gl.getUniformLocation(program, 'texture')
 
+console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS))
+
+const img = new Image()
+img.onload = () => {
+    const texture = gl.createTexture()!
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+
+    // gl.LINEAR の代わりに gl.NEAREST も可能。ミップマップは不可
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    // S 座標のラッピング (繰り返し) を禁止
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    // T 座標のラッピング (繰り返し) を禁止
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+    //gl.generateMipmap(gl.TEXTURE_2D)
+
+    gl.uniform1i(textureUniformLocation, 0)
+    gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix)
+    //gl.drawArrays(gl.TRIANGLES, 0, 3)
+    gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0)
+    gl.flush()
+
+    console.log('flush')
+}
+img.src = 'image.jpg'
 
 
 // const textInput = document.getElementById("text-input") as HTMLInputElement
@@ -351,15 +431,15 @@ gl.flush()
 //     requestUpdate()
 // }
 
-// const downloadButton = document.getElementById("download-button") as HTMLButtonElement
-// downloadButton.onclick = () => {
-//     const link = document.createElement("a")
-//     link.href = canvas.toDataURL("image/jpeg", 0.90)
-//     link.download = "DDONRIP.jpg"
-//     document.body.appendChild(link)
-//     link.click()
-//     document.body.removeChild(link)
-// }
+const downloadButton = document.getElementById("download-button") as HTMLButtonElement
+downloadButton.onclick = () => {
+    const link = document.createElement("a")
+    link.href = canvas.toDataURL("image/jpeg", 0.90)
+    link.download = "DDONRIP.jpg"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+}
 
 // const img = document.createElement("img")
 // img.src = "image.jpg"
