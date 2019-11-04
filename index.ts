@@ -1,4 +1,3 @@
-
 class matIV {
 	create = function(){
 		return new Float32Array(16);
@@ -231,6 +230,7 @@ class matIV {
 
 const dpr = window.devicePixelRatio || 1
 const fontHeight = 50
+const scaledFontHeight = fontHeight * dpr
 
 const carvedTextCanvas = document.createElement("canvas")
 carvedTextCanvas.width = 200
@@ -251,10 +251,43 @@ function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
     carvedTextCanvasContext.strokeText(text, -100, 0)
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in'
     carvedTextCanvasContext.shadowColor = "transparent"
-    carvedTextCanvasContext.fillText(text, 0, 0)
-    const width = carvedTextCanvasContext.measureText(text).width
-    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr)
-    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr)
+	carvedTextCanvasContext.fillText(text, 0, 0)
+	const srcWidth = carvedTextCanvasContext.measureText(text).width * dpr
+	const srcHeight = scaledFontHeight
+	const width = srcWidth / 2
+	const height = srcHeight / 2
+    ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height)
+    ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height)
+	return { width, height }
+}
+
+interface CarvedText {
+    x: number
+	width: number
+	height: number
+}
+
+function generateCarvedTextTexture(gl: WebGLRenderingContext) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1000 * dpr
+    canvas.height = 200 * dpr
+	const ctx = canvas.getContext('2d')!
+    
+    const carvedTexts: { [t: string]: CarvedText } = {}
+    const texts = "abcdefghijklmnopqrstuvwxyz! "
+    let x = 0
+    for (let i = 0; i < texts.length; i++) {
+        const t = texts[i]
+		const size = drawCarvedText(ctx, t, x, 0)
+        carvedTexts[t] = { x, width: size.width, height: size.height }
+        x += size.width
+    }
+
+    return {
+        canvas,
+        ctx,
+        carvedTexts,
+    }
 }
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -262,15 +295,19 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement
 canvas.width = 1920 * dpr
 canvas.height = 1080 * dpr
 
-const glOptions: WebGLContextAttributes = { preserveDrawingBuffer: true }
+const glOptions: WebGLContextAttributes = { preserveDrawingBuffer: true, alpha: false }
 const gl = canvas.getContext('webgl', glOptions) || canvas.getContext('experimental-webgl', glOptions) as WebGLRenderingContext
+//gl.colorMask(false, false, false, true)
 gl.clearColor(0, 0, 0, 1)
 gl.clearDepth(1)
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
+gl.enable(gl.BLEND)
+gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 gl.enable(gl.DEPTH_TEST)
 gl.depthFunc(gl.LEQUAL)
-gl.activeTexture(gl.TEXTURE0)
+
+const carved = generateCarvedTextTexture(gl)
 
 function createShader(source: string, type: number) {
     const shader = gl.createShader(type)!
@@ -298,14 +335,6 @@ function createProgram(vs: WebGLShader, fs: WebGLShader) {
     return program
 }
 
-function createVbo(data: Array<number>) {
-    const vbo = gl.createBuffer()!
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW)
-    gl.bindBuffer(gl.ARRAY_BUFFER, null)
-    return vbo
-}
-
 const vertexShaderSource = `
 attribute vec3 position;
 attribute vec4 color;
@@ -329,7 +358,8 @@ varying vec2      vTextureCoord;
 
 void main(void){
     vec4 smpColor = texture2D(texture, vTextureCoord);
-    gl_FragColor  = vColor * smpColor;
+	gl_FragColor  = vColor * smpColor;
+	gl_FragColor.rgb *= gl_FragColor.a;
 }
 `
 
@@ -340,91 +370,161 @@ const positionAttribLocation = gl.getAttribLocation(program, 'position')
 const colorAttribLocation = gl.getAttribLocation(program, 'color')
 const textureCoordAttributeLocation = gl.getAttribLocation(program, 'textureCoord')
 
-const vertexPosition = [
-    0, 0, 0,
-    1920, 0, 0,
-    0, 1080, 0,
-    1920, 1080, 0,
-]
-const vertexVbo = gl.createBuffer()!
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo)
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW)
-gl.enableVertexAttribArray(positionAttribLocation)
-gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0)
-
-const vertexColor = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-]
-const colorVbo = gl.createBuffer()!
-gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo)
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW)
-gl.enableVertexAttribArray(colorAttribLocation)
-gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0)
-
-const textureCoord = [
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    1.0, 1.0,
-]
-const textureCoordVbo = gl.createBuffer()!
-gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordVbo)
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoord), gl.STATIC_DRAW)
-gl.enableVertexAttribArray(textureCoordAttributeLocation)
-gl.vertexAttribPointer(textureCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0)
-
-const index = [
-    0, 1, 2,
-    3, 2, 1
-]
-const indexIbo = gl.createBuffer()!
-gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexIbo)
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(index), gl.STATIC_DRAW)
-
-const m = new matIV()
-const mMatrix = m.identity(m.create())
-const vMatrix = m.identity(m.create())
-const pMatrix = m.identity(m.create())
-const mvpMatrix = m.identity(m.create())
-
-m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix)
-//m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
-m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix)
-m.multiply(pMatrix, vMatrix, mvpMatrix)
-m.multiply(mvpMatrix, mMatrix, mvpMatrix)
-
 const mvpMatrixUniformLocation = gl.getUniformLocation(program, 'mvpMatrix')
 const textureUniformLocation = gl.getUniformLocation(program, 'texture')
 
-console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS))
+interface Rect {
+	x: number
+	y: number
+	w: number
+	h: number
+}
 
-const img = new Image()
-img.onload = () => {
+function getRectPosition(rect: Rect, z: number) {
+	return [
+		rect.x, rect.y, z,
+		rect.x + rect.w, rect.y, z,
+		rect.x, rect.y + rect.h, z,
+		rect.x + rect.w, rect.y + rect.h, z,
+	]
+}
+
+function createFloatArrayBuffer(data: number[]) {
+	const vbo = gl.createBuffer()!
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW)
+	return vbo
+}
+
+function createInt16ElementBuffer(data: number[]) {
+	const ibo = gl.createBuffer()!
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(data), gl.STATIC_DRAW)
+	return ibo
+}
+
+function setVertex(index: number, size: number) {
+	gl.enableVertexAttribArray(index)
+	gl.vertexAttribPointer(index, size, gl.FLOAT, false, 0, 0)
+}
+
+function createTexture(img: TexImageSource) {
     const texture = gl.createTexture()!
     gl.bindTexture(gl.TEXTURE_2D, texture)
 
-    // gl.LINEAR の代わりに gl.NEAREST も可能。ミップマップは不可
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-    // S 座標のラッピング (繰り返し) を禁止
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    // T 座標のラッピング (繰り返し) を禁止
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
-    //gl.generateMipmap(gl.TEXTURE_2D)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR) // gl.LINEAR の代わりに gl.NEAREST も可能。ミップマップは不可
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE) // S 座標のラッピング (繰り返し) を禁止
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE) // T 座標のラッピング (繰り返し) を禁止
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+	
+	return texture
+}
 
-    gl.uniform1i(textureUniformLocation, 0)
-    gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix)
-    //gl.drawArrays(gl.TRIANGLES, 0, 3)
-    gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0)
-    gl.flush()
+function drawImage(
+	img: TexImageSource,
+	texture: WebGLTexture,
+	imageIndex: number,
+	imageRect: Rect | undefined,
+	destRect: Rect,
+	z: number)
+{
+	imageRect = imageRect || { x: 0, y: 0, w: img.width, h: img.height }
+
+	const vertexVbo = createFloatArrayBuffer(getRectPosition(destRect, z))
+	setVertex(positionAttribLocation, 3)
+
+	const vertexColor = [
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+	]
+	const colorVbo = createFloatArrayBuffer(vertexColor)
+	setVertex(colorAttribLocation, 4)
+
+	const x1 = imageRect.x / img.width
+	const y1 = imageRect.y / img.height
+	const x2 = (imageRect.x + imageRect.w) / img.width
+	const y2 = (imageRect.y + imageRect.h) / img.height
+	const textureCoord = [
+		x1, y1,
+		x2, y1,
+		x1, y2,
+		x2, y2,
+	]
+	const textureCoordVbo = createFloatArrayBuffer(textureCoord)
+	setVertex(textureCoordAttributeLocation, 2)
+
+	const index = [
+		0, 1, 2,
+		3, 2, 1
+	]
+	const indexIbo = createInt16ElementBuffer(index)
+
+	const m = new matIV()
+	const mMatrix = m.identity(m.create())
+	const vMatrix = m.identity(m.create())
+	const pMatrix = m.identity(m.create())
+	const mvpMatrix = m.identity(m.create())
+
+	m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix)
+	//m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
+	m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix)
+	m.multiply(pMatrix, vMatrix, mvpMatrix)
+	m.multiply(mvpMatrix, mMatrix, mvpMatrix)
+
+	gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.uniform1i(textureUniformLocation, imageIndex)
+	gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix)
+	gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0)
+}
+
+console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS))
+
+function loadImage(url: string) {
+	return new Promise<HTMLImageElement>((resolve, reject) => {
+		const img = new Image()
+		img.onload = () => {
+			resolve(img)
+		}
+		img.src = url;
+	})
+}
+
+async function render() {
+	const img = await loadImage('image.jpg')
+	const imgTexture = createTexture(img)
+	gl.activeTexture(gl.TEXTURE0)
+	drawImage(img, imgTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0)
+
+	const carvedTexture = createTexture(carved.canvas)
+	gl.activeTexture(gl.TEXTURE1)
+
+	const text = 'xyz!ksdjfgkjgfkearyfgaskdjfg'
+	const maxWidth = 242 * dpr
+	const startX = 1259 * dpr
+	const startY = 580 * dpr
+	let x = 0
+	let y = 0
+	for (let i = 0; i < text.length; i++) {
+		const c = carved.carvedTexts[text[i]]
+		const w = c.width * 2
+		const h = c.height * 2
+		if (x + w > maxWidth) {
+			y += h
+			x = 0
+		}
+
+		drawImage(carved.canvas, carvedTexture, 1, { x: c.x, y: 0, w: c.width, h: c.height }, { x: startX + x, y: startY + y, w: w, h: h }, 0.1)
+		x += w
+	}
+
+	gl.flush()
 
     console.log('flush')
 }
-img.src = 'image.jpg'
 
+render()
 
 // const textInput = document.getElementById("text-input") as HTMLInputElement
 // textInput.oninput = () => {

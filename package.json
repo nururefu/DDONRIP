@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "watch": "tsc index.ts --watch",
+    "watch": "tsc --watch",
     "watch-css": "node-sass main.scss main.css --output-style compressed -w",
     "start": "http-server",
     "test": "echo \"Error: no test specified\" && exit 1"

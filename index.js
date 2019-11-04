@@ -1,5 +1,41 @@
 "use strict";
-var matIV = /** @class */ (function () {
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+var matIV = (function () {
     function matIV() {
         this.create = function () {
             return new Float32Array(16);
@@ -269,6 +305,7 @@ var matIV = /** @class */ (function () {
 }());
 var dpr = window.devicePixelRatio || 1;
 var fontHeight = 50;
+var scaledFontHeight = fontHeight * dpr;
 var carvedTextCanvas = document.createElement("canvas");
 carvedTextCanvas.width = 200;
 carvedTextCanvas.height = 200;
@@ -288,22 +325,47 @@ function drawCarvedText(ctx, text, x, y) {
     carvedTextCanvasContext.globalCompositeOperation = 'destination-in';
     carvedTextCanvasContext.shadowColor = "transparent";
     carvedTextCanvasContext.fillText(text, 0, 0);
-    var width = carvedTextCanvasContext.measureText(text).width;
-    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr);
-    ctx.drawImage(carvedTextCanvas, 0, 0, width, fontHeight, x, y, width * dpr, fontHeight * dpr);
+    var srcWidth = carvedTextCanvasContext.measureText(text).width * dpr;
+    var srcHeight = scaledFontHeight;
+    var width = srcWidth / 2;
+    var height = srcHeight / 2;
+    ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height);
+    ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height);
+    return { width: width, height: height };
+}
+function generateCarvedTextTexture(gl) {
+    var canvas = document.createElement('canvas');
+    canvas.width = 1000 * dpr;
+    canvas.height = 200 * dpr;
+    var ctx = canvas.getContext('2d');
+    var carvedTexts = {};
+    var texts = "abcdefghijklmnopqrstuvwxyz! ";
+    var x = 0;
+    for (var i = 0; i < texts.length; i++) {
+        var t = texts[i];
+        var size = drawCarvedText(ctx, t, x, 0);
+        carvedTexts[t] = { x: x, width: size.width, height: size.height };
+        x += size.width;
+    }
+    return {
+        canvas: canvas,
+        ctx: ctx,
+        carvedTexts: carvedTexts
+    };
 }
 var canvas = document.getElementById("canvas");
-//const ctx = canvas.getContext("2d")!
 canvas.width = 1920 * dpr;
 canvas.height = 1080 * dpr;
-var glOptions = { preserveDrawingBuffer: true };
+var glOptions = { preserveDrawingBuffer: true, alpha: false };
 var gl = canvas.getContext('webgl', glOptions) || canvas.getContext('experimental-webgl', glOptions);
 gl.clearColor(0, 0, 0, 1);
 gl.clearDepth(1);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 gl.enable(gl.DEPTH_TEST);
 gl.depthFunc(gl.LEQUAL);
-gl.activeTexture(gl.TEXTURE0);
+var carved = generateCarvedTextTexture(gl);
 function createShader(source, type) {
     var shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -324,98 +386,140 @@ function createProgram(vs, fs) {
     gl.useProgram(program);
     return program;
 }
-function createVbo(data) {
-    var vbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    return vbo;
-}
 var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nattribute vec2 textureCoord;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\nvarying   vec2 vTextureCoord;\n\nvoid main(void){\n    vColor        = color;\n    vTextureCoord = textureCoord;\n    gl_Position   = mvpMatrix * vec4(position, 1.0);\n}\n";
-var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n    vec4 smpColor = texture2D(texture, vTextureCoord);\n    gl_FragColor  = vColor * smpColor;\n}\n";
+var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n    vec4 smpColor = texture2D(texture, vTextureCoord);\n\tgl_FragColor  = vColor * smpColor;\n\tgl_FragColor.rgb *= gl_FragColor.a;\n}\n";
 var vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER);
 var fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
 var program = createProgram(vertexShader, fragmentShader);
 var positionAttribLocation = gl.getAttribLocation(program, 'position');
 var colorAttribLocation = gl.getAttribLocation(program, 'color');
 var textureCoordAttributeLocation = gl.getAttribLocation(program, 'textureCoord');
-var vertexPosition = [
-    0, 0, 0,
-    1920, 0, 0,
-    0, 1080, 0,
-    1920, 1080, 0,
-];
-var vertexVbo = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexVbo);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
-gl.enableVertexAttribArray(positionAttribLocation);
-gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
-var vertexColor = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-    1, 1, 1, 1,
-];
-var colorVbo = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, colorVbo);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW);
-gl.enableVertexAttribArray(colorAttribLocation);
-gl.vertexAttribPointer(colorAttribLocation, 4, gl.FLOAT, false, 0, 0);
-var textureCoord = [
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    1.0, 1.0,
-];
-var textureCoordVbo = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordVbo);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoord), gl.STATIC_DRAW);
-gl.enableVertexAttribArray(textureCoordAttributeLocation);
-gl.vertexAttribPointer(textureCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-var index = [
-    0, 1, 2,
-    3, 2, 1
-];
-var indexIbo = gl.createBuffer();
-gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexIbo);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(index), gl.STATIC_DRAW);
-var m = new matIV();
-var mMatrix = m.identity(m.create());
-var vMatrix = m.identity(m.create());
-var pMatrix = m.identity(m.create());
-var mvpMatrix = m.identity(m.create());
-m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix);
-//m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix)
-m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix);
-m.multiply(pMatrix, vMatrix, mvpMatrix);
-m.multiply(mvpMatrix, mMatrix, mvpMatrix);
 var mvpMatrixUniformLocation = gl.getUniformLocation(program, 'mvpMatrix');
 var textureUniformLocation = gl.getUniformLocation(program, 'texture');
-console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS));
-var img = new Image();
-img.onload = function () {
+function getRectPosition(rect, z) {
+    return [
+        rect.x, rect.y, z,
+        rect.x + rect.w, rect.y, z,
+        rect.x, rect.y + rect.h, z,
+        rect.x + rect.w, rect.y + rect.h, z,
+    ];
+}
+function createFloatArrayBuffer(data) {
+    var vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    return vbo;
+}
+function createInt16ElementBuffer(data) {
+    var ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(data), gl.STATIC_DRAW);
+    return ibo;
+}
+function setVertex(index, size) {
+    gl.enableVertexAttribArray(index);
+    gl.vertexAttribPointer(index, size, gl.FLOAT, false, 0, 0);
+}
+function createTexture(img) {
     var texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    // gl.LINEAR の代わりに gl.NEAREST も可能。ミップマップは不可
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    // S 座標のラッピング (繰り返し) を禁止
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    // T 座標のラッピング (繰り返し) を禁止
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    //gl.generateMipmap(gl.TEXTURE_2D)
-    gl.uniform1i(textureUniformLocation, 0);
+    return texture;
+}
+function drawImage(img, texture, imageIndex, imageRect, destRect, z) {
+    imageRect = imageRect || { x: 0, y: 0, w: img.width, h: img.height };
+    var vertexVbo = createFloatArrayBuffer(getRectPosition(destRect, z));
+    setVertex(positionAttribLocation, 3);
+    var vertexColor = [
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+    ];
+    var colorVbo = createFloatArrayBuffer(vertexColor);
+    setVertex(colorAttribLocation, 4);
+    var x1 = imageRect.x / img.width;
+    var y1 = imageRect.y / img.height;
+    var x2 = (imageRect.x + imageRect.w) / img.width;
+    var y2 = (imageRect.y + imageRect.h) / img.height;
+    var textureCoord = [
+        x1, y1,
+        x2, y1,
+        x1, y2,
+        x2, y2,
+    ];
+    var textureCoordVbo = createFloatArrayBuffer(textureCoord);
+    setVertex(textureCoordAttributeLocation, 2);
+    var index = [
+        0, 1, 2,
+        3, 2, 1
+    ];
+    var indexIbo = createInt16ElementBuffer(index);
+    var m = new matIV();
+    var mMatrix = m.identity(m.create());
+    var vMatrix = m.identity(m.create());
+    var pMatrix = m.identity(m.create());
+    var mvpMatrix = m.identity(m.create());
+    m.lookAt([0, 0, 1], [0, 0, 0], [0, 1, 0], vMatrix);
+    m.ortho(0, 1920, 1080, 0, 0.1, 100, pMatrix);
+    m.multiply(pMatrix, vMatrix, mvpMatrix);
+    m.multiply(mvpMatrix, mMatrix, mvpMatrix);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(textureUniformLocation, imageIndex);
     gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix);
-    //gl.drawArrays(gl.TRIANGLES, 0, 3)
     gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
-    gl.flush();
-    console.log('flush');
-};
-img.src = 'image.jpg';
-// const textInput = document.getElementById("text-input") as HTMLInputElement
-// textInput.oninput = () => {
-//     requestUpdate()
-// }
+}
+console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS));
+function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.onload = function () {
+            resolve(img);
+        };
+        img.src = url;
+    });
+}
+function render() {
+    return __awaiter(this, void 0, void 0, function () {
+        var img, imgTexture, carvedTexture, text, maxWidth, startX, startY, x, y, i, c, w, h;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4, loadImage('image.jpg')];
+                case 1:
+                    img = _a.sent();
+                    imgTexture = createTexture(img);
+                    gl.activeTexture(gl.TEXTURE0);
+                    drawImage(img, imgTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0);
+                    carvedTexture = createTexture(carved.canvas);
+                    gl.activeTexture(gl.TEXTURE1);
+                    text = 'xyz!ksdjfgkjgfkearyfgaskdjfg';
+                    maxWidth = 242 * dpr;
+                    startX = 1259 * dpr;
+                    startY = 580 * dpr;
+                    x = 0;
+                    y = 0;
+                    for (i = 0; i < text.length; i++) {
+                        c = carved.carvedTexts[text[i]];
+                        w = c.width * 2;
+                        h = c.height * 2;
+                        if (x + w > maxWidth) {
+                            y += h;
+                            x = 0;
+                        }
+                        drawImage(carved.canvas, carvedTexture, 1, { x: c.x, y: 0, w: c.width, h: c.height }, { x: startX + x, y: startY + y, w: w, h: h }, 0.1);
+                        x += w;
+                    }
+                    gl.flush();
+                    console.log('flush');
+                    return [2];
+            }
+        });
+    });
+}
+render();
 var downloadButton = document.getElementById("download-button");
 downloadButton.onclick = function () {
     var link = document.createElement("a");
@@ -425,56 +529,3 @@ downloadButton.onclick = function () {
     link.click();
     document.body.removeChild(link);
 };
-// const img = document.createElement("img")
-// img.src = "image.jpg"
-// img.onload = () => {
-//     requestUpdate()
-// }
-// let requested = false
-// let requesting = false
-// function requestUpdate() {
-//     requested = true
-//     onUpdate()
-// }
-// function onUpdate() {
-//     if (requesting) return
-//     if (requested) {
-//         requested = false
-//         requesting = true
-//         setTimeout(() => {
-//             requesting = false
-//             onUpdate()
-//         }, 500)
-//     } else {
-//         updateCanvas()
-//     }
-// }
-// function updateCanvas() {
-//     ctx.filter = "none"
-//     ctx.drawImage(img, 0, 0, 1920 * dpr, 1080 * dpr)
-//     const startX = 1259 * dpr
-//     const startY = 580 * dpr
-//     const maxWidth = 242 * dpr
-//     //ctx.strokeStyle = "red"
-//     //ctx.strokeRect(1259, 602, 242, 223)
-//     ctx.filter = "blur(1px)"
-//     const str = textInput.value.toLowerCase()
-//     let offsetX = 0
-//     let offsetY = 0
-//     for (let i = 0; i < str.length; i++) {
-//         const text = str.substr(i, 1)
-//         const width = carvedTextCanvasContext.measureText(text).width * dpr
-//         if (offsetX + width > maxWidth) {
-//             offsetX = 0
-//             offsetY += fontHeight * dpr
-//         }
-//         //console.log(text, startX + offsetX, startY + offsetY)
-//         drawCarvedText(ctx, text, startX + offsetX, startY + offsetY)
-//         offsetX += width
-//     }
-//     ctx.filter = "none"
-//     ctx.fillStyle = "gray"
-//     ctx.font = "20px sans-serif"
-//     ctx.textBaseline = "top"
-//     ctx.fillText("DDON R.I.P. @nururefu", 10 * dpr, (1080 - 30) * dpr)
-// }
