@@ -232,16 +232,7 @@ const dpr = window.devicePixelRatio || 1
 const fontHeight = 50
 const scaledFontHeight = fontHeight * dpr
 
-const carvedTextCanvas = document.createElement("canvas")
-carvedTextCanvas.width = 200
-carvedTextCanvas.height = 200
-const carvedTextCanvasContext = carvedTextCanvas.getContext("2d")!
-carvedTextCanvasContext.fillStyle = "black"
-carvedTextCanvasContext.globalAlpha = 1
-carvedTextCanvasContext.font = fontHeight + "px lestania"
-carvedTextCanvasContext.textBaseline = "top"
-
-function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+function drawCarvedText(carvedTextCanvas: HTMLCanvasElement, carvedTextCanvasContext: CanvasRenderingContext2D, ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height)
     carvedTextCanvasContext.globalCompositeOperation = 'source-over'
     carvedTextCanvasContext.shadowColor = "black"
@@ -261,13 +252,28 @@ function drawCarvedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
 	return { width, height }
 }
 
+interface CarvedCanvas {
+	canvas: HTMLCanvasElement
+	ctx: CanvasRenderingContext2D
+	carvedTexts: { [t: string]: CarvedText }
+}
+
 interface CarvedText {
     x: number
 	width: number
 	height: number
 }
 
-function generateCarvedTextTexture(gl: WebGLRenderingContext) {
+function generateCarvedTextCanvas(): CarvedCanvas {
+	const carvedTextCanvas = document.createElement("canvas")
+	carvedTextCanvas.width = 200
+	carvedTextCanvas.height = 200
+	const carvedTextCanvasContext = carvedTextCanvas.getContext("2d")!
+	carvedTextCanvasContext.fillStyle = "black"
+	carvedTextCanvasContext.globalAlpha = 1
+	carvedTextCanvasContext.font = fontHeight + "px lestania"
+	carvedTextCanvasContext.textBaseline = "top"
+
     const canvas = document.createElement('canvas')
     canvas.width = 1000 * dpr
     canvas.height = 200 * dpr
@@ -278,7 +284,7 @@ function generateCarvedTextTexture(gl: WebGLRenderingContext) {
     let x = 0
     for (let i = 0; i < texts.length; i++) {
         const t = texts[i]
-		const size = drawCarvedText(ctx, t, x, 0)
+		const size = drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, t, x, 0)
         carvedTexts[t] = { x, width: size.width, height: size.height }
         x += size.width
     }
@@ -288,6 +294,25 @@ function generateCarvedTextTexture(gl: WebGLRenderingContext) {
         ctx,
         carvedTexts,
     }
+}
+
+function drawCarvedTexts(carved: CarvedCanvas, ctx: CanvasRenderingContext2D, text: string, offsetX: number, offsetY: number, maxWidth: number) {
+	let x = 0;
+	let y = 0;
+	for (let i = 0; i < text.length; i++) {
+		const c = carved.carvedTexts[text[i]]
+		if (c !== undefined) {
+			const w = c.width * 2
+			const h = c.height * 2
+			if (x + w > maxWidth) {
+				x = 0
+				y += h
+			}
+
+			ctx.drawImage(carved.canvas, c.x, 0, c.width, c.height, x + offsetX, y + offsetY, w, h)
+			x += w
+		}
+	}
 }
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -306,8 +331,6 @@ gl.enable(gl.BLEND)
 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 gl.enable(gl.DEPTH_TEST)
 gl.depthFunc(gl.LEQUAL)
-
-const carved = generateCarvedTextTexture(gl)
 
 function createShader(source: string, type: number) {
     const shader = gl.createShader(type)!
@@ -491,45 +514,52 @@ function loadImage(url: string) {
 	})
 }
 
-async function render() {
-	const img = await loadImage('image.jpg')
-	const imgTexture = createTexture(img)
-	gl.activeTexture(gl.TEXTURE0)
-	drawImage(img, imgTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0)
+let inputtedText = ''
+let mainImage: HTMLImageElement
+let mainImageTexture: WebGLTexture
+let carved: CarvedCanvas
 
-	const carvedTexture = createTexture(carved.canvas)
+const startX = 1259 * dpr
+const startY = 580 * dpr
+const maxWidth = 242 * dpr
+const maxHeight = 500 * dpr
+const carvedTextsImage = document.createElement('canvas')
+carvedTextsImage.width = maxWidth
+carvedTextsImage.height = maxHeight
+const carvedTextsImageContext = carvedTextsImage.getContext('2d')!
+
+async function initialize() {
+	mainImage = await loadImage('image.jpg')
+	mainImageTexture = createTexture(mainImage)
+	carved = generateCarvedTextCanvas()
+}
+
+function render() {
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	gl.activeTexture(gl.TEXTURE0)
+	drawImage(mainImage, mainImageTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0)
+
+	carvedTextsImageContext.clearRect(0, 0, maxWidth, maxHeight)
+	drawCarvedTexts(carved, carvedTextsImageContext, inputtedText, 0, 0, maxWidth)
+	const carvedTexture = createTexture(carvedTextsImage)
 	gl.activeTexture(gl.TEXTURE1)
 
-	const text = 'xyz!ksdjfgkjgfkearyfgaskdjfg'
-	const maxWidth = 242 * dpr
-	const startX = 1259 * dpr
-	const startY = 580 * dpr
-	let x = 0
-	let y = 0
-	for (let i = 0; i < text.length; i++) {
-		const c = carved.carvedTexts[text[i]]
-		const w = c.width * 2
-		const h = c.height * 2
-		if (x + w > maxWidth) {
-			y += h
-			x = 0
-		}
-
-		drawImage(carved.canvas, carvedTexture, 1, { x: c.x, y: 0, w: c.width, h: c.height }, { x: startX + x, y: startY + y, w: w, h: h }, 0.1)
-		x += w
-	}
+	drawImage(carvedTextsImage, carvedTexture, 1, undefined, { x: startX, y: startY, w: maxWidth, h: maxHeight }, 0.1)
 
 	gl.flush()
 
     console.log('flush')
 }
 
-render()
+initialize().then(() => render())
 
-// const textInput = document.getElementById("text-input") as HTMLInputElement
-// textInput.oninput = () => {
-//     requestUpdate()
-// }
+const textInput = document.getElementById("text-input") as HTMLInputElement
+textInput.oninput = () => {
+	inputtedText = textInput.value
+	render()
+    //requestUpdate()
+}
 
 const downloadButton = document.getElementById("download-button") as HTMLButtonElement
 downloadButton.onclick = () => {
@@ -547,27 +577,27 @@ downloadButton.onclick = () => {
 //     requestUpdate()
 // }
 
-// let requested = false
-// let requesting = false
-// function requestUpdate() {
-//     requested = true
-//     onUpdate()
-// }
+let requested = false
+let requesting = false
+function requestUpdate() {
+    requested = true
+    onUpdate()
+}
 
-// function onUpdate() {
-//     if (requesting) return
+function onUpdate() {
+    if (requesting) return
 
-//     if (requested) {
-//         requested = false
-//         requesting = true
-//         setTimeout(() => {
-//             requesting = false
-//             onUpdate()
-//         }, 500)
-//     } else {
-//         updateCanvas()
-//     }
-// }
+    if (requested) {
+        requested = false
+        requesting = true
+        setTimeout(() => {
+            requesting = false
+            onUpdate()
+        }, 500)
+    } else {
+        render()
+    }
+}
 
 // function updateCanvas() {
 //     ctx.filter = "none"

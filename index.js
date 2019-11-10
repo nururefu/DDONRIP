@@ -306,15 +306,7 @@ var matIV = (function () {
 var dpr = window.devicePixelRatio || 1;
 var fontHeight = 50;
 var scaledFontHeight = fontHeight * dpr;
-var carvedTextCanvas = document.createElement("canvas");
-carvedTextCanvas.width = 200;
-carvedTextCanvas.height = 200;
-var carvedTextCanvasContext = carvedTextCanvas.getContext("2d");
-carvedTextCanvasContext.fillStyle = "black";
-carvedTextCanvasContext.globalAlpha = 1;
-carvedTextCanvasContext.font = fontHeight + "px lestania";
-carvedTextCanvasContext.textBaseline = "top";
-function drawCarvedText(ctx, text, x, y) {
+function drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, text, x, y) {
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height);
     carvedTextCanvasContext.globalCompositeOperation = 'source-over';
     carvedTextCanvasContext.shadowColor = "black";
@@ -333,7 +325,15 @@ function drawCarvedText(ctx, text, x, y) {
     ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height);
     return { width: width, height: height };
 }
-function generateCarvedTextTexture(gl) {
+function generateCarvedTextCanvas() {
+    var carvedTextCanvas = document.createElement("canvas");
+    carvedTextCanvas.width = 200;
+    carvedTextCanvas.height = 200;
+    var carvedTextCanvasContext = carvedTextCanvas.getContext("2d");
+    carvedTextCanvasContext.fillStyle = "black";
+    carvedTextCanvasContext.globalAlpha = 1;
+    carvedTextCanvasContext.font = fontHeight + "px lestania";
+    carvedTextCanvasContext.textBaseline = "top";
     var canvas = document.createElement('canvas');
     canvas.width = 1000 * dpr;
     canvas.height = 200 * dpr;
@@ -343,7 +343,7 @@ function generateCarvedTextTexture(gl) {
     var x = 0;
     for (var i = 0; i < texts.length; i++) {
         var t = texts[i];
-        var size = drawCarvedText(ctx, t, x, 0);
+        var size = drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, t, x, 0);
         carvedTexts[t] = { x: x, width: size.width, height: size.height };
         x += size.width;
     }
@@ -352,6 +352,23 @@ function generateCarvedTextTexture(gl) {
         ctx: ctx,
         carvedTexts: carvedTexts
     };
+}
+function drawCarvedTexts(carved, ctx, text, offsetX, offsetY, maxWidth) {
+    var x = 0;
+    var y = 0;
+    for (var i = 0; i < text.length; i++) {
+        var c = carved.carvedTexts[text[i]];
+        if (c !== undefined) {
+            var w = c.width * 2;
+            var h = c.height * 2;
+            if (x + w > maxWidth) {
+                x = 0;
+                y += h;
+            }
+            ctx.drawImage(carved.canvas, c.x, 0, c.width, c.height, x + offsetX, y + offsetY, w, h);
+            x += w;
+        }
+    }
 }
 var canvas = document.getElementById("canvas");
 canvas.width = 1920 * dpr;
@@ -365,7 +382,6 @@ gl.enable(gl.BLEND);
 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 gl.enable(gl.DEPTH_TEST);
 gl.depthFunc(gl.LEQUAL);
-var carved = generateCarvedTextTexture(gl);
 function createShader(source, type) {
     var shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -482,44 +498,50 @@ function loadImage(url) {
         img.src = url;
     });
 }
-function render() {
+var inputtedText = '';
+var mainImage;
+var mainImageTexture;
+var carved;
+var startX = 1259 * dpr;
+var startY = 580 * dpr;
+var maxWidth = 242 * dpr;
+var maxHeight = 500 * dpr;
+var carvedTextsImage = document.createElement('canvas');
+carvedTextsImage.width = maxWidth;
+carvedTextsImage.height = maxHeight;
+var carvedTextsImageContext = carvedTextsImage.getContext('2d');
+function initialize() {
     return __awaiter(this, void 0, void 0, function () {
-        var img, imgTexture, carvedTexture, text, maxWidth, startX, startY, x, y, i, c, w, h;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, loadImage('image.jpg')];
                 case 1:
-                    img = _a.sent();
-                    imgTexture = createTexture(img);
-                    gl.activeTexture(gl.TEXTURE0);
-                    drawImage(img, imgTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0);
-                    carvedTexture = createTexture(carved.canvas);
-                    gl.activeTexture(gl.TEXTURE1);
-                    text = 'xyz!ksdjfgkjgfkearyfgaskdjfg';
-                    maxWidth = 242 * dpr;
-                    startX = 1259 * dpr;
-                    startY = 580 * dpr;
-                    x = 0;
-                    y = 0;
-                    for (i = 0; i < text.length; i++) {
-                        c = carved.carvedTexts[text[i]];
-                        w = c.width * 2;
-                        h = c.height * 2;
-                        if (x + w > maxWidth) {
-                            y += h;
-                            x = 0;
-                        }
-                        drawImage(carved.canvas, carvedTexture, 1, { x: c.x, y: 0, w: c.width, h: c.height }, { x: startX + x, y: startY + y, w: w, h: h }, 0.1);
-                        x += w;
-                    }
-                    gl.flush();
-                    console.log('flush');
+                    mainImage = _a.sent();
+                    mainImageTexture = createTexture(mainImage);
+                    carved = generateCarvedTextCanvas();
                     return [2];
             }
         });
     });
 }
-render();
+function render() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.activeTexture(gl.TEXTURE0);
+    drawImage(mainImage, mainImageTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0);
+    carvedTextsImageContext.clearRect(0, 0, maxWidth, maxHeight);
+    drawCarvedTexts(carved, carvedTextsImageContext, inputtedText, 0, 0, maxWidth);
+    var carvedTexture = createTexture(carvedTextsImage);
+    gl.activeTexture(gl.TEXTURE1);
+    drawImage(carvedTextsImage, carvedTexture, 1, undefined, { x: startX, y: startY, w: maxWidth, h: maxHeight }, 0.1);
+    gl.flush();
+    console.log('flush');
+}
+initialize().then(function () { return render(); });
+var textInput = document.getElementById("text-input");
+textInput.oninput = function () {
+    inputtedText = textInput.value;
+    render();
+};
 var downloadButton = document.getElementById("download-button");
 downloadButton.onclick = function () {
     var link = document.createElement("a");
@@ -529,3 +551,24 @@ downloadButton.onclick = function () {
     link.click();
     document.body.removeChild(link);
 };
+var requested = false;
+var requesting = false;
+function requestUpdate() {
+    requested = true;
+    onUpdate();
+}
+function onUpdate() {
+    if (requesting)
+        return;
+    if (requested) {
+        requested = false;
+        requesting = true;
+        setTimeout(function () {
+            requesting = false;
+            onUpdate();
+        }, 500);
+    }
+    else {
+        render();
+    }
+}
