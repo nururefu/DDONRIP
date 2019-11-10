@@ -1,3 +1,5 @@
+/// <reference path="global.d.ts" />
+
 class matIV {
 	create = function(){
 		return new Float32Array(16);
@@ -531,6 +533,9 @@ const carvedTextsImageContext = carvedTextsImage.getContext('2d')!
 async function initialize() {
 	mainImage = await loadImage('image.jpg')
 	mainImageTexture = createTexture(mainImage)
+
+	const font = new FontFaceObserver('lestania')
+	await font.load()
 	carved = generateCarvedTextCanvas()
 }
 

@@ -512,12 +512,17 @@ carvedTextsImage.height = maxHeight;
 var carvedTextsImageContext = carvedTextsImage.getContext('2d');
 function initialize() {
     return __awaiter(this, void 0, void 0, function () {
+        var font;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, loadImage('image.jpg')];
                 case 1:
                     mainImage = _a.sent();
                     mainImageTexture = createTexture(mainImage);
+                    font = new FontFaceObserver('lestania');
+                    return [4, font.load()];
+                case 2:
+                    _a.sent();
                     carved = generateCarvedTextCanvas();
                     return [2];
             }
