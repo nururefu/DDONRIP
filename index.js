@@ -35,6 +35,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var debug = false;
 var matIV = (function () {
     function matIV() {
         this.create = function () {
@@ -306,7 +307,7 @@ var matIV = (function () {
 var dpr = 1;
 var fontHeight = 50;
 var scaledFontHeight = fontHeight * dpr;
-function drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, text, x, y) {
+function drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, text, x, y, scale) {
     carvedTextCanvasContext.clearRect(0, 0, carvedTextCanvas.width, carvedTextCanvas.height);
     carvedTextCanvasContext.globalCompositeOperation = 'source-over';
     carvedTextCanvasContext.shadowColor = "black";
@@ -319,19 +320,19 @@ function drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, text, x,
     carvedTextCanvasContext.fillText(text, 0, 0);
     var srcWidth = carvedTextCanvasContext.measureText(text).width * dpr;
     var srcHeight = scaledFontHeight;
-    var width = srcWidth / 2;
-    var height = srcHeight / 2;
+    var width = srcWidth * scale;
+    var height = srcHeight * scale;
     ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height);
     ctx.drawImage(carvedTextCanvas, 0, 0, srcWidth, srcHeight, x, y, width, height);
     return { width: width, height: height };
 }
-function generateCarvedTextCanvas() {
+function generateCarvedTextCanvas(scale, alpha) {
     var carvedTextCanvas = document.createElement("canvas");
     carvedTextCanvas.width = 200;
     carvedTextCanvas.height = 200;
     var carvedTextCanvasContext = carvedTextCanvas.getContext("2d");
     carvedTextCanvasContext.fillStyle = "black";
-    carvedTextCanvasContext.globalAlpha = 1;
+    carvedTextCanvasContext.globalAlpha = alpha;
     carvedTextCanvasContext.font = fontHeight + "px lestania";
     carvedTextCanvasContext.textBaseline = "top";
     var canvas = document.createElement('canvas');
@@ -343,7 +344,7 @@ function generateCarvedTextCanvas() {
     var x = 0;
     for (var i = 0; i < texts.length; i++) {
         var t = texts[i];
-        var size = drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, t, x, 0);
+        var size = drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, t, x, 0, scale);
         carvedTexts[t] = { x: x, width: size.width, height: size.height };
         x += size.width;
     }
@@ -353,14 +354,14 @@ function generateCarvedTextCanvas() {
         carvedTexts: carvedTexts
     };
 }
-function drawCarvedTexts(carved, ctx, text, offsetX, offsetY, maxWidth) {
+function drawCarvedTexts(carved, ctx, text, offsetX, offsetY, maxWidth, scale) {
     var x = 0;
     var y = 0;
     for (var i = 0; i < text.length; i++) {
         var c = carved.carvedTexts[text[i]];
         if (c !== undefined) {
-            var w = c.width * 2;
-            var h = c.height * 2;
+            var w = c.width * scale;
+            var h = c.height * scale;
             if (x + w > maxWidth) {
                 x = 0;
                 y += h;
@@ -369,6 +370,95 @@ function drawCarvedTexts(carved, ctx, text, offsetX, offsetY, maxWidth) {
             x += w;
         }
     }
+}
+var imageItems = [
+    {
+        name: 'ハイデル',
+        path: 'image1.jpg',
+        rect: { x: 1259, y: 580, w: 242, h: 300 },
+        scale: 1,
+        alpha: 1
+    }, {
+        name: 'エルテディナン',
+        path: 'image2.jpg',
+        rect: { x: 1477, y: 463, w: 181, h: 200 },
+        scale: 0.75,
+        alpha: 0.9,
+        position: [
+            1473, 458,
+            1611, 438,
+            1500, 638,
+            1653, 623,
+        ]
+    }, {
+        name: 'メルゴダ護政区',
+        path: 'image3.jpg',
+        rect: { x: 1336, y: 806, w: 142, h: 77 },
+        scale: 0.5,
+        alpha: 0.9,
+        position: [
+            1345, 806,
+            1477, 806,
+            1330, 878,
+            1477, 883,
+        ]
+    }, {
+        name: 'エルテディナン2',
+        path: 'image4.jpg',
+        rect: { x: 559, y: 914, w: 803, h: 41 },
+        scale: 0.9,
+        alpha: 1
+    }, {
+        name: '秘弓師の住居',
+        path: 'image5.jpg',
+        rect: { x: 1321, y: 262, w: 250, h: 716 },
+        scale: 1,
+        alpha: 0.9,
+        position: [
+            1321, 272,
+            1515, 313,
+            1440, 964,
+            1696, 952,
+        ]
+    }, {
+        name: '禊の神殿',
+        path: 'image6.jpg',
+        rect: { x: 305, y: 662, w: 267, h: 226 },
+        scale: 1,
+        alpha: 1,
+        position: [
+            315, 667,
+            579, 679,
+            281, 878,
+            561, 874,
+        ]
+    }, {
+        name: 'ポーン郷',
+        path: 'image7.jpg',
+        rect: { x: 407, y: 824, w: 204, h: 160 },
+        scale: 0.8,
+        alpha: 0.9,
+        position: [
+            413, 832,
+            610, 832,
+            398, 956,
+            600, 957,
+        ]
+    },
+];
+var selectedImageItem = imageItems[0];
+var imageSelect = document.getElementById('image-select');
+imageSelect.onchange = function () {
+    var selectedItem = imageItems[imageSelect.selectedIndex];
+    selectedImageItem = selectedItem;
+    console.log(selectedItem);
+    initialize().then(function () { return render(); });
+};
+for (var _i = 0, imageItems_1 = imageItems; _i < imageItems_1.length; _i++) {
+    var item = imageItems_1[_i];
+    var option = document.createElement('option');
+    option.text = item.name;
+    imageSelect.options.add(option);
 }
 var canvas = document.getElementById("canvas");
 canvas.width = 1920 * dpr;
@@ -403,7 +493,7 @@ function createProgram(vs, fs) {
     return program;
 }
 var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nattribute vec2 textureCoord;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\nvarying   vec2 vTextureCoord;\n\nvoid main(void){\n    vColor        = color;\n    vTextureCoord = textureCoord;\n    gl_Position   = mvpMatrix * vec4(position, 1.0);\n}\n";
-var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n    vec4 smpColor = texture2D(texture, vTextureCoord);\n\tgl_FragColor  = vColor * smpColor;\n\tgl_FragColor.rgb *= gl_FragColor.a;\n}\n";
+var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nuniform bool      useTexture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n\tif (useTexture) {\n\t\tgl_FragColor = vColor * texture2D(texture, vTextureCoord);\n\t} else {\n\t\tgl_FragColor = vColor;\n\t}\n\t//gl_FragColor  = vColor;\n\t//gl_FragColor.rgb *= gl_FragColor.a;\n}\n";
 var vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER);
 var fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
 var program = createProgram(vertexShader, fragmentShader);
@@ -412,6 +502,7 @@ var colorAttribLocation = gl.getAttribLocation(program, 'color');
 var textureCoordAttributeLocation = gl.getAttribLocation(program, 'textureCoord');
 var mvpMatrixUniformLocation = gl.getUniformLocation(program, 'mvpMatrix');
 var textureUniformLocation = gl.getUniformLocation(program, 'texture');
+var useTextureUniformLocation = gl.getUniformLocation(program, 'useTexture');
 function getRectPosition(rect, z) {
     return [
         rect.x, rect.y, z,
@@ -445,9 +536,9 @@ function createTexture(img) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
     return texture;
 }
-function drawImage(img, texture, imageIndex, imageRect, destRect, z) {
+function drawImage(img, texture, imageIndex, imageRect, destPosition) {
     imageRect = imageRect || { x: 0, y: 0, w: img.width, h: img.height };
-    var vertexVbo = createFloatArrayBuffer(getRectPosition(destRect, z));
+    var vertexVbo = createFloatArrayBuffer(destPosition);
     setVertex(positionAttribLocation, 3);
     var vertexColor = [
         1, 1, 1, 1,
@@ -485,14 +576,21 @@ function drawImage(img, texture, imageIndex, imageRect, destRect, z) {
     m.multiply(mvpMatrix, mMatrix, mvpMatrix);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(textureUniformLocation, imageIndex);
+    gl.uniform1i(useTextureUniformLocation, 1);
     gl.uniformMatrix4fv(mvpMatrixUniformLocation, false, mvpMatrix);
     gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+    if (debug) {
+        gl.uniform1i(useTextureUniformLocation, 0);
+        gl.drawArrays(gl.LINE_STRIP, 0, 4);
+    }
 }
 console.log('MAX_COMBINED_TEXTURE_IMAGE_UNITS', gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS));
 function loadImage(url) {
     return new Promise(function (resolve, reject) {
+        console.log('loadImage', url);
         var img = new Image();
         img.onload = function () {
+            console.log('onload', url);
             resolve(img);
         };
         img.src = url;
@@ -502,44 +600,61 @@ var inputtedText = '';
 var mainImage;
 var mainImageTexture;
 var carved;
-var startX = 1259 * dpr;
-var startY = 580 * dpr;
-var maxWidth = 242 * dpr;
-var maxHeight = 500 * dpr;
 var carvedTextsImage = document.createElement('canvas');
-carvedTextsImage.width = maxWidth;
-carvedTextsImage.height = maxHeight;
 var carvedTextsImageContext = carvedTextsImage.getContext('2d');
+var initialized = false;
 function initialize() {
     return __awaiter(this, void 0, void 0, function () {
         var font;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4, loadImage('image.jpg')];
+                case 0:
+                    if (!selectedImageItem) return [3, 3];
+                    initialized = false;
+                    return [4, loadImage(selectedImageItem.path)];
                 case 1:
                     mainImage = _a.sent();
                     mainImageTexture = createTexture(mainImage);
+                    carvedTextsImage.width = selectedImageItem.rect.w;
+                    carvedTextsImage.height = selectedImageItem.rect.h;
                     font = new FontFaceObserver('lestania');
                     return [4, font.load()];
                 case 2:
                     _a.sent();
-                    carved = generateCarvedTextCanvas();
-                    return [2];
+                    carved = generateCarvedTextCanvas(selectedImageItem.scale / 2, selectedImageItem.alpha);
+                    initialized = true;
+                    console.log('initialized');
+                    _a.label = 3;
+                case 3: return [2];
             }
         });
     });
 }
 function render() {
+    console.log('render', initialized, selectedImageItem);
+    if (!initialized || !selectedImageItem)
+        return;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
-    drawImage(mainImage, mainImageTexture, 0, undefined, { x: 0, y: 0, w: 1920, h: 1080 }, 0);
-    carvedTextsImageContext.clearRect(0, 0, maxWidth, maxHeight);
-    drawCarvedTexts(carved, carvedTextsImageContext, inputtedText, 0, 0, maxWidth);
+    drawImage(mainImage, mainImageTexture, 0, undefined, getRectPosition({ x: 0, y: 0, w: 1920, h: 1080 }, 0));
+    var r = selectedImageItem.rect;
+    carvedTextsImageContext.clearRect(0, 0, r.w, r.h);
+    drawCarvedTexts(carved, carvedTextsImageContext, inputtedText, 0, 0, r.w, 2);
     var carvedTexture = createTexture(carvedTextsImage);
     gl.activeTexture(gl.TEXTURE1);
-    drawImage(carvedTextsImage, carvedTexture, 1, undefined, { x: startX, y: startY, w: maxWidth, h: maxHeight }, 0.1);
+    var z = 0.1;
+    var position = selectedImageItem.position ? getRectPositionByXY(selectedImageItem.position, 0) : getRectPosition(r, 0);
+    drawImage(carvedTextsImage, carvedTexture, 1, undefined, position);
     gl.flush();
     console.log('flush');
+}
+function getRectPositionByXY(p, z) {
+    return [
+        p[0], p[1], z,
+        p[2], p[3], z,
+        p[4], p[5], z,
+        p[6], p[7], z,
+    ];
 }
 initialize().then(function () { return render(); });
 var textInput = document.getElementById("text-input");
@@ -547,6 +662,7 @@ textInput.oninput = function () {
     inputtedText = textInput.value;
     render();
 };
+inputtedText = textInput.value;
 var downloadButton = document.getElementById("download-button");
 downloadButton.onclick = function () {
     var link = document.createElement("a");
