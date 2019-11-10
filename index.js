@@ -303,7 +303,7 @@ var matIV = (function () {
     ;
     return matIV;
 }());
-var dpr = window.devicePixelRatio || 1;
+var dpr = 1;
 var fontHeight = 50;
 var scaledFontHeight = fontHeight * dpr;
 function drawCarvedText(carvedTextCanvas, carvedTextCanvasContext, ctx, text, x, y) {

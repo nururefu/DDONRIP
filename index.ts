@@ -230,7 +230,7 @@ class matIV {
 	};
 }
 
-const dpr = window.devicePixelRatio || 1
+const dpr = 1//window.devicePixelRatio || 1
 const fontHeight = 50
 const scaledFontHeight = fontHeight * dpr
 
