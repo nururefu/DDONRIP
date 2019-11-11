@@ -319,6 +319,24 @@ function drawCarvedTexts(carved: CarvedCanvas, ctx: CanvasRenderingContext2D, te
 	}
 }
 
+function generateCreditImage() {
+	const canvas = document.createElement('canvas')
+	canvas.width = 250
+	canvas.height = 40
+	const ctx = canvas.getContext('2d')!
+	ctx.clearRect(0, 0, canvas.width, canvas.height)
+	ctx.textBaseline = 'bottom'
+	ctx.fillStyle = 'white'
+	ctx.shadowColor = 'black'
+	ctx.shadowOffsetX = 1
+	ctx.shadowOffsetY = 1
+	ctx.font = '20px lestania ' + getComputedStyle(document.body).fontFamily
+	ctx.globalAlpha = 0.3
+	const text = 'DDON R.I.P. by @nururefu'
+	ctx.fillText(text, 0, 40)
+	return canvas
+}
+
 interface Rect {
 	x: number
 	y: number
@@ -499,7 +517,7 @@ void main(void){
 		gl_FragColor = vColor;
 	}
 	//gl_FragColor  = vColor;
-	//gl_FragColor.rgb *= gl_FragColor.a;
+	gl_FragColor.rgb *= gl_FragColor.a;
 }
 `
 
@@ -636,6 +654,9 @@ let mainImage: HTMLImageElement
 let mainImageTexture: WebGLTexture
 let carved: CarvedCanvas
 
+const creditImage = generateCreditImage()
+const creditImageTexture = createTexture(creditImage)
+
 const carvedTextsImage = document.createElement('canvas')
 const carvedTextsImageContext = carvedTextsImage.getContext('2d')!
 
@@ -677,6 +698,9 @@ function render() {
 	const z = 0.1
 	const position = selectedImageItem.position ? getRectPositionByXY(selectedImageItem.position, 0) : getRectPosition(r, 0)
 	drawImage(carvedTextsImage, carvedTexture, 1, undefined, position)
+
+	gl.activeTexture(gl.TEXTURE2)
+	drawImage(creditImage, creditImageTexture, 2, undefined, getRectPosition({ x: 1920 - 10 - creditImage.width, y: 1080 - 10 - creditImage.height, w: creditImage.width, h: creditImage.height }, 0))
 
 	gl.flush()
 

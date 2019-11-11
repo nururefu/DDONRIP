@@ -371,6 +371,23 @@ function drawCarvedTexts(carved, ctx, text, offsetX, offsetY, maxWidth, scale) {
         }
     }
 }
+function generateCreditImage() {
+    var canvas = document.createElement('canvas');
+    canvas.width = 250;
+    canvas.height = 40;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'black';
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.font = '20px lestania ' + getComputedStyle(document.body).fontFamily;
+    ctx.globalAlpha = 0.3;
+    var text = 'DDON R.I.P. by @nururefu';
+    ctx.fillText(text, 0, 40);
+    return canvas;
+}
 var imageItems = [
     {
         name: 'ハイデル',
@@ -493,7 +510,7 @@ function createProgram(vs, fs) {
     return program;
 }
 var vertexShaderSource = "\nattribute vec3 position;\nattribute vec4 color;\nattribute vec2 textureCoord;\nuniform   mat4 mvpMatrix;\nvarying   vec4 vColor;\nvarying   vec2 vTextureCoord;\n\nvoid main(void){\n    vColor        = color;\n    vTextureCoord = textureCoord;\n    gl_Position   = mvpMatrix * vec4(position, 1.0);\n}\n";
-var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nuniform bool      useTexture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n\tif (useTexture) {\n\t\tgl_FragColor = vColor * texture2D(texture, vTextureCoord);\n\t} else {\n\t\tgl_FragColor = vColor;\n\t}\n\t//gl_FragColor  = vColor;\n\t//gl_FragColor.rgb *= gl_FragColor.a;\n}\n";
+var fragmentShaderSource = "\nprecision mediump float;\n\nuniform sampler2D texture;\nuniform bool      useTexture;\nvarying vec4      vColor;\nvarying vec2      vTextureCoord;\n\nvoid main(void){\n\tif (useTexture) {\n\t\tgl_FragColor = vColor * texture2D(texture, vTextureCoord);\n\t} else {\n\t\tgl_FragColor = vColor;\n\t}\n\t//gl_FragColor  = vColor;\n\tgl_FragColor.rgb *= gl_FragColor.a;\n}\n";
 var vertexShader = createShader(vertexShaderSource, gl.VERTEX_SHADER);
 var fragmentShader = createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
 var program = createProgram(vertexShader, fragmentShader);
@@ -600,6 +617,8 @@ var inputtedText = '';
 var mainImage;
 var mainImageTexture;
 var carved;
+var creditImage = generateCreditImage();
+var creditImageTexture = createTexture(creditImage);
 var carvedTextsImage = document.createElement('canvas');
 var carvedTextsImageContext = carvedTextsImage.getContext('2d');
 var initialized = false;
@@ -645,6 +664,8 @@ function render() {
     var z = 0.1;
     var position = selectedImageItem.position ? getRectPositionByXY(selectedImageItem.position, 0) : getRectPosition(r, 0);
     drawImage(carvedTextsImage, carvedTexture, 1, undefined, position);
+    gl.activeTexture(gl.TEXTURE2);
+    drawImage(creditImage, creditImageTexture, 2, undefined, getRectPosition({ x: 1920 - 10 - creditImage.width, y: 1080 - 10 - creditImage.height, w: creditImage.width, h: creditImage.height }, 0));
     gl.flush();
     console.log('flush');
 }
