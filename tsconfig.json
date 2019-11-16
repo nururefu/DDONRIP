@@ -5,10 +5,10 @@
             "dom",
             "es2015"
         ],
-        "outFile": "./index.js",
+        "outFile": "./docs/index.js",
         "removeComments": true
     },
     "files": [
-        "index.ts"
+        "./src/index.ts"
     ]
 }
